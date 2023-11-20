@@ -1,0 +1,7 @@
+```{r read data}
+# Get content into a data frame
+data <- read.csv("./data/day.csv", header = TRUE, sep = ",")
+
+# Printing content of Text File
+data
+```
