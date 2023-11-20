@@ -9,9 +9,11 @@
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
+<meta name="author" content="Nisse Hermsen" />
 
+<meta name="date" content="2023-11-20" />
 
-<title>eda.knit</title>
+<title>EDA</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -348,10 +350,29 @@ display: none;
 
 
 
+<h1 class="title toc-ignore">EDA</h1>
+<h4 class="author">Nisse Hermsen</h4>
+<h4 class="date">2023-11-20</h4>
 
 </div>
 
 
+<div id="bike-sharing" class="section level1">
+<h1>Bike sharing</h1>
+<p>url: <a href="https://archive.ics.uci.edu/dataset/275/bike+sharing+dataset" class="uri">https://archive.ics.uci.edu/dataset/275/bike+sharing+dataset</a><br />
+</p>
+<p>Possible RQ’s:<br />
+* Can weather and day data predict the amount of daily bike rentals?
+(linear)<br />
+* Can weather and bike rental amount predict the season?
+(logistic)<br />
+</p>
+<p>Meets requirements:<br />
+* continuous outcome (e.g. temp, windspeed)<br />
+* 2 continuous predictors (e.g. casual, registered)<br />
+* categorical predictor (e.g. season)<br />
+* binary outcome (e.g holiday, workday)<br />
+</p>
 <pre class="r"><code>bike_df &lt;- read.csv(&quot;../data/bike.csv&quot;, header = TRUE, sep = &quot;,&quot;)
 
 head(bike_df, 20)</code></pre>
@@ -397,6 +418,10 @@ head(bike_df, 20)</code></pre>
 ## 18 0.216667 0.232333 0.861667 0.1467750      9        674  683
 ## 19 0.292174 0.298422 0.741739 0.2083170     78       1572 1650
 ## 20 0.261667 0.255050 0.538333 0.1959040     83       1844 1927</code></pre>
+</div>
+<div id="adult-census-stuff" class="section level1">
+<h1>Adult census stuff</h1>
+<p>url: <a href="https://archive.ics.uci.edu/dataset/2/adult" class="uri">https://archive.ics.uci.edu/dataset/2/adult</a></p>
 <pre class="r"><code>adult_df &lt;- read.table(&quot;../data/adult.data&quot;, dec=&quot;,&quot;)
 
 head(adult_df, 20)</code></pre>
@@ -463,6 +488,7 @@ head(adult_df, 20)</code></pre>
 ## 18 United-States, &lt;=50K
 ## 19 United-States, &lt;=50K
 ## 20 United-States,  &gt;50K</code></pre>
+</div>
 
 
 

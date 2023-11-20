@@ -1,8 +1,30 @@
+---
+title: "EDA"
+author: "Nisse Hermsen"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Bike sharing
+url: https://archive.ics.uci.edu/dataset/275/bike+sharing+dataset \
+
+Possible RQ's: \
+* Can weather and day data predict the amount of daily bike rentals? (linear) \
+* Can weather and bike rental amount predict the season? (logistic) \
+
+Meets requirements: \
+* continuous outcome (e.g. temp, windspeed) \
+* 2 continuous predictors (e.g. casual, registered) \
+* categorical predictor (e.g. season) \
+* binary outcome (e.g holiday, workday) \
+
 ```{r read bike}
 bike_df <- read.csv("../data/bike.csv", header = TRUE, sep = ",")
 
 head(bike_df, 20)
 ```
+# Adult census stuff
+url: https://archive.ics.uci.edu/dataset/2/adult
 
 ```{r read adult}
 adult_df <- read.table("../data/adult.data", dec=",")
