@@ -1,7 +1,13 @@
-```{r read data}
+```{r read bike}
 # Get content into a data frame
-data <- read.csv("./data/day.csv", header = TRUE, sep = ",")
+bike_df <- read.csv("./data/bike.csv", header = TRUE, sep = ",")
 
 # Printing content of Text File
-data
+bike_df
+```
+
+```{r read adult}
+adult_df <- read.table("./data/adult.data", dec=",")
+
+adult_df
 ```
