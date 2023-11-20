@@ -1,13 +1,11 @@
 ```{r read bike}
-# Get content into a data frame
-bike_df <- read.csv("./data/bike.csv", header = TRUE, sep = ",")
+bike_df <- read.csv("../data/bike.csv", header = TRUE, sep = ",")
 
-# Printing content of Text File
-bike_df
+head(bike_df, 20)
 ```
 
 ```{r read adult}
-adult_df <- read.table("./data/adult.data", dec=",")
+adult_df <- read.table("../data/adult.data", dec=",")
 
-adult_df
+head(adult_df, 20)
 ```
