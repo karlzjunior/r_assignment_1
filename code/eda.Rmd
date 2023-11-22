@@ -23,9 +23,12 @@ head(bike_df, 20)
 # Preprocessing
 We first factorise the categorical data present within the data set. A method to do this for regression analysis is by
 creating dummy variables (a.k.a. dummy coding). By removing the first dummy variable - leaving us with n-1 dummy
-variables - we avoid multi-collinearity issues in  (https://cran.r-project.org/web/packages/fastDummies/fastDummies.pdf).
+variables - we avoid multi-collinearity issues in  (https://cran.r-project.org/web/packages/fastDummies/fastDummies.pdf).\\
+More info on categorical data in regression (https://stats.oarc.ucla.edu/spss/faq/coding-systems-for-categorical-variables-in-regression-analysis-2/#:~:text=Categorical%20variables%20require%20special%20attention,entered%20into%20the%20regression%20model.)
+
+Further research: generalised linear model, using poisson distribution.
 ```{r factorise}
 categorical_cols <- c('season', 'yr', 'mnth', 'weekday', 'weathersit')
-bike_df <- dummy_cols(bike_dfselect_columns = categorical_cols, remove_first_dummy = TRUE)
-head(bike_df, 20)
+new_df <- dummy_cols(bike_df, select_columns = categorical_cols, remove_first_dummy = TRUE)
+head(new_df, 20)
 ```
