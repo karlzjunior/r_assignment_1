@@ -7,6 +7,13 @@ output: html_document
 
 # Bike sharing
 url: https://archive.ics.uci.edu/dataset/275/bike+sharing+dataset
+
+Import the required dependencies.
+```{r import}
+library(tidyverse)
+library(fastDummies)
+```
+Proceed to read the data.
 ```{r read bike}
 bike_df <- read.csv("./data/bike.csv", header = TRUE, sep = ",")
 
@@ -14,3 +21,11 @@ head(bike_df, 20)
 ```
 
 # Preprocessing
+We first factorise the categorical data present within the data set. A method to do this for regression analysis is by
+creating dummy variables (a.k.a. dummy coding). By removing the first dummy variable - leaving us with n-1 dummy
+variables - we avoid multi-collinearity issues in  (https://cran.r-project.org/web/packages/fastDummies/fastDummies.pdf).
+```{r factorise}
+categorical_cols <- c('season', 'yr', 'mnth', 'weekday', 'weathersit')
+bike_df <- dummy_cols(bike_dfselect_columns = categorical_cols, remove_first_dummy = TRUE)
+head(bike_df, 20)
+```

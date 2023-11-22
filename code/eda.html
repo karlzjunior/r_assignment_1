@@ -11,7 +11,7 @@
 
 <meta name="author" content="Nisse Hermsen" />
 
-<meta name="date" content="2023-11-20" />
+<meta name="date" content="2023-11-22" />
 
 <title>EDA</title>
 
@@ -352,27 +352,27 @@ display: none;
 
 <h1 class="title toc-ignore">EDA</h1>
 <h4 class="author">Nisse Hermsen</h4>
-<h4 class="date">2023-11-20</h4>
+<h4 class="date">2023-11-22</h4>
 
 </div>
 
 
 <div id="bike-sharing" class="section level1">
 <h1>Bike sharing</h1>
-<p>url: <a href="https://archive.ics.uci.edu/dataset/275/bike+sharing+dataset" class="uri">https://archive.ics.uci.edu/dataset/275/bike+sharing+dataset</a><br />
-</p>
-<p>Possible RQ’s:<br />
-* Can weather and day data predict the amount of daily bike rentals?
-(linear)<br />
-* Can weather and bike rental amount predict the season?
-(logistic)<br />
-</p>
-<p>Meets requirements:<br />
-* continuous outcome (e.g. temp, windspeed)<br />
-* 2 continuous predictors (e.g. casual, registered)<br />
-* categorical predictor (e.g. season)<br />
-* binary outcome (e.g holiday, workday)<br />
-</p>
+<p>url: <a href="https://archive.ics.uci.edu/dataset/275/bike+sharing+dataset" class="uri">https://archive.ics.uci.edu/dataset/275/bike+sharing+dataset</a></p>
+<p>Import the required dependencies.</p>
+<pre class="r"><code>library(tidyverse)</code></pre>
+<pre><code>## ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+## ✔ dplyr     1.1.4     ✔ readr     2.1.4
+## ✔ forcats   1.0.0     ✔ stringr   1.5.1
+## ✔ ggplot2   3.4.4     ✔ tibble    3.2.1
+## ✔ lubridate 1.9.3     ✔ tidyr     1.3.0
+## ✔ purrr     1.0.2     
+## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+## ✖ dplyr::filter() masks stats::filter()
+## ✖ dplyr::lag()    masks stats::lag()
+## ℹ Use the conflicted package (&lt;http://conflicted.r-lib.org/&gt;) to force all conflicts to become errors</code></pre>
+<p>Proceed to read the data.</p>
 <pre class="r"><code>bike_df &lt;- read.csv(&quot;../data/bike.csv&quot;, header = TRUE, sep = &quot;,&quot;)
 
 head(bike_df, 20)</code></pre>
@@ -419,75 +419,10 @@ head(bike_df, 20)</code></pre>
 ## 19 0.292174 0.298422 0.741739 0.2083170     78       1572 1650
 ## 20 0.261667 0.255050 0.538333 0.1959040     83       1844 1927</code></pre>
 </div>
-<div id="adult-census-stuff" class="section level1">
-<h1>Adult census stuff</h1>
-<p>url: <a href="https://archive.ics.uci.edu/dataset/2/adult" class="uri">https://archive.ics.uci.edu/dataset/2/adult</a></p>
-<pre class="r"><code>adult_df &lt;- read.table(&quot;../data/adult.data&quot;, dec=&quot;,&quot;)
-
-head(adult_df, 20)</code></pre>
-<pre><code>##    V1                V2     V3            V4 V5                     V6
-## 1  39        State-gov,  77516    Bachelors, 13         Never-married,
-## 2  50 Self-emp-not-inc,  83311    Bachelors, 13    Married-civ-spouse,
-## 3  38          Private, 215646      HS-grad,  9              Divorced,
-## 4  53          Private, 234721         11th,  7    Married-civ-spouse,
-## 5  28          Private, 338409    Bachelors, 13    Married-civ-spouse,
-## 6  37          Private, 284582      Masters, 14    Married-civ-spouse,
-## 7  49          Private, 160187          9th,  5 Married-spouse-absent,
-## 8  52 Self-emp-not-inc, 209642      HS-grad,  9    Married-civ-spouse,
-## 9  31          Private,  45781      Masters, 14         Never-married,
-## 10 42          Private, 159449    Bachelors, 13    Married-civ-spouse,
-## 11 37          Private, 280464 Some-college, 10    Married-civ-spouse,
-## 12 30        State-gov, 141297    Bachelors, 13    Married-civ-spouse,
-## 13 23          Private, 122272    Bachelors, 13         Never-married,
-## 14 32          Private, 205019   Assoc-acdm, 12         Never-married,
-## 15 40          Private, 121772    Assoc-voc, 11    Married-civ-spouse,
-## 16 34          Private, 245487      7th-8th,  4    Married-civ-spouse,
-## 17 25 Self-emp-not-inc, 176756      HS-grad,  9         Never-married,
-## 18 32          Private, 186824      HS-grad,  9         Never-married,
-## 19 38          Private,  28887         11th,  7    Married-civ-spouse,
-## 20 43 Self-emp-not-inc, 292175      Masters, 14              Divorced,
-##                    V7             V8                  V9     V10   V11 V12 V13
-## 1       Adm-clerical, Not-in-family,              White,   Male,  2174   0  40
-## 2    Exec-managerial,       Husband,              White,   Male,     0   0  13
-## 3  Handlers-cleaners, Not-in-family,              White,   Male,     0   0  40
-## 4  Handlers-cleaners,       Husband,              Black,   Male,     0   0  40
-## 5     Prof-specialty,          Wife,              Black, Female,     0   0  40
-## 6    Exec-managerial,          Wife,              White, Female,     0   0  40
-## 7      Other-service, Not-in-family,              Black, Female,     0   0  16
-## 8    Exec-managerial,       Husband,              White,   Male,     0   0  45
-## 9     Prof-specialty, Not-in-family,              White, Female, 14084   0  50
-## 10   Exec-managerial,       Husband,              White,   Male,  5178   0  40
-## 11   Exec-managerial,       Husband,              Black,   Male,     0   0  80
-## 12    Prof-specialty,       Husband, Asian-Pac-Islander,   Male,     0   0  40
-## 13      Adm-clerical,     Own-child,              White, Female,     0   0  30
-## 14             Sales, Not-in-family,              Black,   Male,     0   0  50
-## 15      Craft-repair,       Husband, Asian-Pac-Islander,   Male,     0   0  40
-## 16  Transport-moving,       Husband, Amer-Indian-Eskimo,   Male,     0   0  45
-## 17   Farming-fishing,     Own-child,              White,   Male,     0   0  35
-## 18 Machine-op-inspct,     Unmarried,              White,   Male,     0   0  40
-## 19             Sales,       Husband,              White,   Male,     0   0  50
-## 20   Exec-managerial,     Unmarried,              White, Female,     0   0  45
-##               V14   V15
-## 1  United-States, &lt;=50K
-## 2  United-States, &lt;=50K
-## 3  United-States, &lt;=50K
-## 4  United-States, &lt;=50K
-## 5           Cuba, &lt;=50K
-## 6  United-States, &lt;=50K
-## 7        Jamaica, &lt;=50K
-## 8  United-States,  &gt;50K
-## 9  United-States,  &gt;50K
-## 10 United-States,  &gt;50K
-## 11 United-States,  &gt;50K
-## 12         India,  &gt;50K
-## 13 United-States, &lt;=50K
-## 14 United-States, &lt;=50K
-## 15             ?,  &gt;50K
-## 16        Mexico, &lt;=50K
-## 17 United-States, &lt;=50K
-## 18 United-States, &lt;=50K
-## 19 United-States, &lt;=50K
-## 20 United-States,  &gt;50K</code></pre>
+<div id="preprocessing" class="section level1">
+<h1>Preprocessing</h1>
+<p>We first factorise the categorical data present within the data
+set.</p>
 </div>
 
 
