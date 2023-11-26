@@ -6,10 +6,11 @@ output: html_document
 ---
 
 # Bike sharing
-url: https://archive.ics.uci.edu/dataset/275/bike+sharing+dataset
+## Load data
+Data set is acquired from [machine-learning repo](https://archive.ics.uci.edu/dataset/275/bike+sharing+dataset).
 
 Import the required dependencies.
-```{r import}
+```{r import, message = FALSE}
 library(tidyverse)
 library(fastDummies)
 library(kableExtra)
@@ -20,18 +21,50 @@ source <- read.csv("../data/hour.csv", header = TRUE, sep = ",") %>%
     as_tibble()
 ```
 
-# Preprocessing
-TODO:
-- Categorical data transformation
-- Missing data
-- Distributions
-
+## Preprocessing
 Sub-select variables for linear model:
 ```{r select}
-data <- select(source, dteday, hr, holiday, temp, atemp, windspeed, cnt)
+data <- select(source, dteday, hr, holiday, temp, atemp, hum, windspeed, cnt)
+```
+
+### Missing data
+Since all of our current predictor variables are numeric (rather than text), we  
+can first find missing values by checking for the standard `NA` notation. In this  
+case, we do *not* find any `NA` values.
+```{r missing standard}
+anyNA(data)
+```
+That said, missing values can still be represented as numeric values (e.g.  
+`0`, `999`, `inf`). Therefore we check for non-standard formatted missing values by  
+looking at the distributions of the predictor values.  
+```{r missing non-standard}
+# hr
+ggplot(data, aes(x = hr)) + 
+    geom_histogram(binwidth = 1)
+
+# temp
+ggplot(data, aes(x = temp)) + 
+    geom_histogram()
+
+# atemp
+ggplot(data, aes(x = atemp)) + 
+    geom_histogram()
+
+# windspeed
+ggplot(data, aes(x = windspeed)) + 
+    geom_histogram()
+
+# hum
+ggplot(data, aes(x = hum)) + 
+    geom_histogram()
+
+# cnt
+ggplot(data, aes(x = cnt)) + 
+    geom_histogram()
 ```
 
 ### Factorise hour data
+Since hour is categorical, we need to factorise the vector data.
 ```{r segment hour}
 # Increment the `hr` column by one for ease of indexing purposes
 data$hr <- data$hr + 1
