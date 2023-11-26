@@ -17,16 +17,15 @@ library(kableExtra)
 ```
 Proceed to read the data.
 ```{r read bike}
-source <- read.csv("../data/hour.csv", header = TRUE, sep = ",") %>%
+source_data <- read.csv("../data/hour.csv", header = TRUE, sep = ",") %>%
     as_tibble()
+```
+Sub-select variables for linear model:
+```{r select}
+data <- select(source_data, dteday, hr, holiday, temp, atemp, hum, windspeed, cnt)
 ```
 
 ## Preprocessing
-Sub-select variables for linear model:
-```{r select}
-data <- select(source, dteday, hr, holiday, temp, atemp, hum, windspeed, cnt)
-```
-
 ### Missing data
 Since all of our current predictor variables are numeric (rather than text), we  
 can first find missing values by checking for the standard `NA` notation. In this  
@@ -37,7 +36,9 @@ anyNA(data)
 That said, missing values can still be represented as numeric values (e.g.  
 `0`, `999`, `inf`). Therefore we check for non-standard formatted missing values by  
 looking at the distributions of the predictor values.  
-```{r missing non-standard}
+One thing worth noting, the `windspeed` distribution seems to have no lower values except for `0`. This raises
+the question whether `0` is truly a value, or perhaps is a substitute for missing data.
+```{r missing non-standard, message = FALSE}
 # hr
 ggplot(data, aes(x = hr)) + 
     geom_histogram(binwidth = 1)
@@ -64,8 +65,20 @@ ggplot(data, aes(x = cnt)) +
 ```
 
 ### Factorise hour data
-Since hour is categorical, we need to factorise the vector data.
-```{r segment hour}
+Since `hour` is categorical, we need to factorise the vector data. To do so, we need to determine representative segments of the day.
+```{r determine segment}
+# TODO create histogram hour ~ temp/cnt.
+```
+
+
+Based on earlier analysis, the following segments have been made for `hour` (**placeholder data**):  
+* `[1..6]`  
+* `[7..12]`  
+* `[13..18]`  
+* `[19..24]`  
+By using the `cut` function, we can create so-called bins for the `hour` data.  
+The new index is saved in `hr_bin`.
+```{r factorise hour}
 # Increment the `hr` column by one for ease of indexing purposes
 data$hr <- data$hr + 1
 
@@ -76,6 +89,12 @@ data <- data %>%
         labels = NULL
     ))
 
+# Print column transformation
+head(select(data, hr, hr_bin), 10)
+print(count(data, hr_bin))
+```
+After having created `hr_bin`, we aggregate the data based on both the date (`dteday`) and the hour segments (`hr_bin`). In case of dichotomous variables, we take the `mode` of the variable.
+```{r aggregate hour}
 # Create a `mode` function for aggregation.
 mode <- function(x) {
     which.max(table(x))
@@ -95,15 +114,15 @@ data <- data %>%
 
 head(data, 10)
 ```
+Categorical variables (i.e. `hr_bin`) are not directly suited for regression analysis, unlike dichotomous or continous
+variables. Instead, they need to be recoded into a series of variables which can then be entered into the regression
+model [[UCLA](https://stats.oarc.ucla.edu/spss/faq/coding-systems-for-categorical-variables-in-regression-analysis-2/#)].
+The chosen method is creating **dummy variables** for the categorical data, provided by the `dummy_cols` function.
+By removing the first dummy variable we multi-collinearity issues in the model [[fastDummies documentation](https://cran.r-project.org/web/packages/fastDummies/fastDummies.pdf)].  
 
-### Adding dummy variables
-We factorise the categorical data present within the data set. A method to do this for regression analysis is by
-creating dummy variables (a.k.a. dummy coding). By removing the first dummy variable - leaving us with n-1 dummy
-variables - we avoid multi-collinearity issues in  (https://cran.r-project.org/web/packages/fastDummies/fastDummies.pdf).\
-More info on categorical data in regression (https://stats.oarc.ucla.edu/spss/faq/coding-systems-for-categorical-variables-in-regression-analysis-2/#:~:text=Categorical%20variables%20require%20special%20attention,entered%20into%20the%20regression%20model.) \ 
+(Further research: *generalised linear model*, using *poisson distribution.)
 
-(Further research: generalised linear model, using poisson distribution.)
 ```{r dummy}
-data <- dummy_cols(data, select_columns = c("hr_bin"), remove_first_dummy = FALSE)
+data <- dummy_cols(data, select_columns = c("hr_bin"), remove_first_dummy = TRUE)
 head(data, 10)
 ```
