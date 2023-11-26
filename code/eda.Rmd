@@ -1,6 +1,6 @@
 ---
 title: "EDA"
-author: "Nisse Hermsen"
+author: "Aga, Karla, Nisse, Ole"
 date: "`r Sys.Date()`"
 output: html_document
 ---
@@ -12,12 +12,12 @@ Import the required dependencies.
 ```{r import}
 library(tidyverse)
 library(fastDummies)
+library(kableExtra)
 ```
 Proceed to read the data.
 ```{r read bike}
-bike_df <- read.csv("./data/bike.csv", header = TRUE, sep = ",")
-
-head(bike_df, 20)
+source <- read.csv("../data/hour.csv", header = TRUE, sep = ",") %>%
+    as_tibble()
 ```
 
 # Preprocessing
@@ -26,14 +26,51 @@ TODO:
 - Missing data
 - Distributions
 
-We first factorise the categorical data present within the data set. A method to do this for regression analysis is by
-creating dummy variables (a.k.a. dummy coding). By removing the first dummy variable - leaving us with n-1 dummy
-variables - we avoid multi-collinearity issues in  (https://cran.r-project.org/web/packages/fastDummies/fastDummies.pdf).\\
-More info on categorical data in regression (https://stats.oarc.ucla.edu/spss/faq/coding-systems-for-categorical-variables-in-regression-analysis-2/#:~:text=Categorical%20variables%20require%20special%20attention,entered%20into%20the%20regression%20model.)
+Sub-select variables for linear model:
+```{r select}
+data <- select(source, dteday, hr, holiday, temp, atemp, windspeed, cnt)
+```
 
-Further research: generalised linear model, using poisson distribution.
-```{r factorise}
-categorical_cols <- c('season', 'yr', 'mnth', 'weekday', 'weathersit')
-new_df <- dummy_cols(bike_df, select_columns = categorical_cols, remove_first_dummy = TRUE)
-head(new_df, 20)
+### Factorise hour data
+```{r segment hour}
+# Increment the `hr` column by one for ease of indexing purposes
+data$hr <- data$hr + 1
+
+# Factorise the `hr` column using 4 categories / bins.
+data <- data %>%
+    mutate(hr_bin = cut(hr,
+        breaks = c(0, 6, 12, 18, 24),
+        labels = NULL
+    ))
+
+# Create a `mode` function for aggregation.
+mode <- function(x) {
+    which.max(table(x))
+}
+
+# Aggregate over `hr_bin` factor.
+data <- data %>%
+    select(-hr) %>%
+    group_by(dteday, hr_bin) %>%
+    summarize(
+        holiday = mode(holiday),
+        temp = mean(temp),
+        atemp = mean(atemp),
+        windspeed = mean(atemp),
+        cnt = sum(cnt)
+    )
+
+head(data, 10)
+```
+
+### Adding dummy variables
+We factorise the categorical data present within the data set. A method to do this for regression analysis is by
+creating dummy variables (a.k.a. dummy coding). By removing the first dummy variable - leaving us with n-1 dummy
+variables - we avoid multi-collinearity issues in  (https://cran.r-project.org/web/packages/fastDummies/fastDummies.pdf).\
+More info on categorical data in regression (https://stats.oarc.ucla.edu/spss/faq/coding-systems-for-categorical-variables-in-regression-analysis-2/#:~:text=Categorical%20variables%20require%20special%20attention,entered%20into%20the%20regression%20model.) \ 
+
+(Further research: generalised linear model, using poisson distribution.)
+```{r dummy}
+data <- dummy_cols(data, select_columns = c("hr_bin"), remove_first_dummy = FALSE)
+head(data, 10)
 ```
