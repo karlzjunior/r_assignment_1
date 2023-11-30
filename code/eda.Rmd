@@ -68,11 +68,18 @@ ggplot(data, aes(x = cnt)) +
 Since `hour` is categorical, we need to factorise the vector data. To do so, we need to determine representative segments of the day.
 ```{r determine segment}
 # TODO create histogram hour ~ temp/cnt.
+
+data$weathersit <- as.factor(data$weathersit)
+
+w_df <- data
+
+ggplot(w_df, aes(weathersit, cnt)) +
+    geom_boxplot()
 ```
 
 
 Based on earlier analysis, the following segments have been made for `hour` (**placeholder data**):  
-* `[1..6]`  
+* `[1..6]`
 * `[7..12]`  
 * `[13..18]`  
 * `[19..24]`  
