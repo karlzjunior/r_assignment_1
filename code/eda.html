@@ -371,7 +371,7 @@ library(kableExtra)</code></pre>
 <pre class="r"><code>source_data &lt;- read.csv(&quot;../data/hour.csv&quot;, header = TRUE, sep = &quot;,&quot;) %&gt;%
     as_tibble()</code></pre>
 <p>Sub-select variables for linear model:</p>
-<pre class="r"><code>data &lt;- select(source_data, dteday, hr, holiday, temp, atemp, hum, windspeed, cnt)</code></pre>
+<pre class="r"><code>data &lt;- select(source_data, dteday, hr, holiday, weathersit, temp, atemp, hum, windspeed, cnt)</code></pre>
 </div>
 <div id="preprocessing" class="section level2">
 <h2>Preprocessing</h2>
@@ -487,26 +487,26 @@ data &lt;- data %&gt;%
         temp = mean(temp),
         atemp = mean(atemp),
         windspeed = mean(atemp),
-        # weather cat
+        weathersit = mode(weathersit),
         cnt = sum(cnt)
     )</code></pre>
 <pre><code>## `summarise()` has grouped output by &#39;dteday&#39;. You can override using the
 ## `.groups` argument.</code></pre>
 <pre class="r"><code>head(data, 10)</code></pre>
-<pre><code>## # A tibble: 10 × 7
+<pre><code>## # A tibble: 10 × 8
 ## # Groups:   dteday [4]
-##    dteday     hr_bin  holiday  temp atemp windspeed   cnt
-##    &lt;chr&gt;      &lt;fct&gt;     &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt;     &lt;dbl&gt; &lt;int&gt;
-##  1 2011-01-01 (0,7]         1 0.26  0.299     0.299   144
-##  2 2011-01-01 (7,15]        1 0.355 0.369     0.369   401
-##  3 2011-01-01 (15,23]       1 0.418 0.422     0.422   440
-##  4 2011-01-02 (0,7]         1 0.411 0.411     0.411    62
-##  5 2011-01-02 (7,15]        1 0.372 0.366     0.366   379
-##  6 2011-01-02 (15,23]       1 0.312 0.292     0.292   360
-##  7 2011-01-03 (0,7]         1 0.177 0.159     0.159    53
-##  8 2011-01-03 (7,15]        1 0.192 0.176     0.176   600
-##  9 2011-01-03 (15,23]       1 0.215 0.225     0.225   696
-## 10 2011-01-04 (0,7]         1 0.149 0.175     0.175    61</code></pre>
+##    dteday     hr_bin  holiday  temp atemp windspeed weathersit   cnt
+##    &lt;chr&gt;      &lt;fct&gt;     &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt;     &lt;dbl&gt;      &lt;int&gt; &lt;int&gt;
+##  1 2011-01-01 (0,7]         1 0.26  0.299     0.299          1   144
+##  2 2011-01-01 (7,15]        1 0.355 0.369     0.369          1   401
+##  3 2011-01-01 (15,23]       1 0.418 0.422     0.422          1   440
+##  4 2011-01-02 (0,7]         1 0.411 0.411     0.411          2    62
+##  5 2011-01-02 (7,15]        1 0.372 0.366     0.366          1   379
+##  6 2011-01-02 (15,23]       1 0.312 0.292     0.292          1   360
+##  7 2011-01-03 (0,7]         1 0.177 0.159     0.159          1    53
+##  8 2011-01-03 (7,15]        1 0.192 0.176     0.176          1   600
+##  9 2011-01-03 (15,23]       1 0.215 0.225     0.225          1   696
+## 10 2011-01-04 (0,7]         1 0.149 0.175     0.175          1    61</code></pre>
 <p>Categorical variables (i.e. <code>hr_bin</code>) are not directly
 suited for regression analysis, unlike dichotomous or continous
 variables. Instead, they need to be recoded into a series of variables
@@ -518,22 +518,23 @@ model [<a href="https://cran.r-project.org/web/packages/fastDummies/fastDummies.
 documentation</a>].</p>
 <p>(Further research: <em>generalised linear model</em>, using *poisson
 distribution.)</p>
-<pre class="r"><code>data &lt;- dummy_cols(data, select_columns = c(&quot;hr_bin&quot;), remove_first_dummy = TRUE)
+<pre class="r"><code>data &lt;- dummy_cols(data, select_columns = c(&quot;hr_bin&quot;, &quot;weathersit&quot;), remove_first_dummy = TRUE)
 head(data, 10)</code></pre>
-<pre><code>## # A tibble: 10 × 9
-##    dteday     hr_bin  holiday  temp atemp windspeed   cnt `hr_bin_(7,15]`
-##    &lt;chr&gt;      &lt;fct&gt;     &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt;     &lt;dbl&gt; &lt;int&gt;           &lt;int&gt;
-##  1 2011-01-01 (0,7]         1 0.26  0.299     0.299   144               0
-##  2 2011-01-01 (7,15]        1 0.355 0.369     0.369   401               1
-##  3 2011-01-01 (15,23]       1 0.418 0.422     0.422   440               0
-##  4 2011-01-02 (0,7]         1 0.411 0.411     0.411    62               0
-##  5 2011-01-02 (7,15]        1 0.372 0.366     0.366   379               1
-##  6 2011-01-02 (15,23]       1 0.312 0.292     0.292   360               0
-##  7 2011-01-03 (0,7]         1 0.177 0.159     0.159    53               0
-##  8 2011-01-03 (7,15]        1 0.192 0.176     0.176   600               1
-##  9 2011-01-03 (15,23]       1 0.215 0.225     0.225   696               0
-## 10 2011-01-04 (0,7]         1 0.149 0.175     0.175    61               0
-## # ℹ 1 more variable: `hr_bin_(15,23]` &lt;int&gt;</code></pre>
+<pre><code>## # A tibble: 10 × 12
+##    dteday  hr_bin holiday  temp atemp windspeed weathersit   cnt `hr_bin_(7,15]`
+##    &lt;chr&gt;   &lt;fct&gt;    &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt;     &lt;dbl&gt;      &lt;int&gt; &lt;int&gt;           &lt;int&gt;
+##  1 2011-0… (0,7]        1 0.26  0.299     0.299          1   144               0
+##  2 2011-0… (7,15]       1 0.355 0.369     0.369          1   401               1
+##  3 2011-0… (15,2…       1 0.418 0.422     0.422          1   440               0
+##  4 2011-0… (0,7]        1 0.411 0.411     0.411          2    62               0
+##  5 2011-0… (7,15]       1 0.372 0.366     0.366          1   379               1
+##  6 2011-0… (15,2…       1 0.312 0.292     0.292          1   360               0
+##  7 2011-0… (0,7]        1 0.177 0.159     0.159          1    53               0
+##  8 2011-0… (7,15]       1 0.192 0.176     0.176          1   600               1
+##  9 2011-0… (15,2…       1 0.215 0.225     0.225          1   696               0
+## 10 2011-0… (0,7]        1 0.149 0.175     0.175          1    61               0
+## # ℹ 3 more variables: `hr_bin_(15,23]` &lt;int&gt;, weathersit_2 &lt;int&gt;,
+## #   weathersit_3 &lt;int&gt;</code></pre>
 </div>
 </div>
 </div>

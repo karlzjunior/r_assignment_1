@@ -22,7 +22,7 @@ source_data <- read.csv("../data/hour.csv", header = TRUE, sep = ",") %>%
 ```
 Sub-select variables for linear model:
 ```{r select}
-data <- select(source_data, dteday, hr, holiday, temp, atemp, hum, windspeed, cnt)
+data <- select(source_data, dteday, hr, holiday, weathersit, temp, atemp, hum, windspeed, cnt)
 ```
 
 ## Preprocessing
@@ -112,7 +112,7 @@ data <- data %>%
         temp = mean(temp),
         atemp = mean(atemp),
         windspeed = mean(atemp),
-        # weather cat
+        weathersit = mode(weathersit),
         cnt = sum(cnt)
     )
 
@@ -122,11 +122,11 @@ Categorical variables (i.e. `hr_bin`) are not directly suited for regression ana
 variables. Instead, they need to be recoded into a series of variables which can then be entered into the regression
 model [[UCLA](https://stats.oarc.ucla.edu/spss/faq/coding-systems-for-categorical-variables-in-regression-analysis-2/#)].
 The chosen method is creating **dummy variables** for the categorical data, provided by the `dummy_cols` function.
-By removing the first dummy variable we multi-collinearity issues in the model [[fastDummies documentation](https://cran.r-project.org/web/packages/fastDummies/fastDummies.pdf)].  
+By removing the first dummy variable we multi-collinearity issues in the model [[fastDummies documentation](https://cran.r-project.org/web/packages/fastDummies/fastDummies.pdf)].
 
 (Further research: *generalised linear model*, using *poisson distribution.)
 
 ```{r dummy}
-data <- dummy_cols(data, select_columns = c("hr_bin"), remove_first_dummy = TRUE)
+data <- dummy_cols(data, select_columns = c("hr_bin", "weathersit"), remove_first_dummy = TRUE)
 head(data, 10)
 ```
