@@ -82,15 +82,18 @@ The new index is saved in `hr_bin`.
 # Increment the `hr` column by one for ease of indexing purposes
 data$hr <- data$hr + 1
 
+# Increment 24 hour to avoid splitting when grouping on data.
+data$hr[data$hr == 24L] <- 1L
+
 # Factorise the `hr` column using 4 categories / bins.
 data <- data %>%
     mutate(hr_bin = cut(hr,
-        breaks = c(0, 6, 12, 18, 24),
+        breaks = c(0, 7, 15, 23),
         labels = NULL
     ))
 
 # Print column transformation
-head(select(data, hr, hr_bin), 10)
+head(select(data, hr, hr_bin), 30)
 print(count(data, hr_bin))
 ```
 After having created `hr_bin`, we aggregate the data based on both the date (`dteday`) and the hour segments (`hr_bin`). In case of dichotomous variables, we take the `mode` of the variable.
@@ -109,6 +112,7 @@ data <- data %>%
         temp = mean(temp),
         atemp = mean(atemp),
         windspeed = mean(atemp),
+        # weather cat
         cnt = sum(cnt)
     )
 
