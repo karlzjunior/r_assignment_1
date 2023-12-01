@@ -2,14 +2,53 @@
 title: "Bike Sharing"
 author: "Aga, Karla, Nisse, Ole"
 date: "`r Sys.Date()`"
-output: html_document
+output: 
+  html_document:
+    theme: united
+    number_sections: false
+    toc: true
+    toc_float:
+      collapsed: true
+    df_print: paged
+bibliography: references.bib  
 ---
 
-## Load data
+# Abstract
+![](../images/bike_sharing.jpeg)  
 
-Data set is acquired from [machine-learning repo](https://archive.ics.uci.edu/dataset/275/bike+sharing+dataset).
+"*Bikesharing contributes to the advent of more sustainable transportation in cities around the globe.*" [@beland]. Bikesharing programs are designed to provide short-term bicycle rental in stations dispersed throughout the cities and located near public transportation hubs [@beland]. They have numerous environmental and health benefits, such as reducing congestion, complementing other forms of public transportation and encouraging exercise [@beland]. Additionally, accessible bike rental has a lower barrier of entry than purchasing your own bike and is more convenient for out-of-town commuters.  
+In principle bicycles pose a good substitute for car use in urban areas, however, they have certain limitations. Among them is the exposure of cyclists to weather while commuting compared to other means of transportation. It would be intuitive for the number of bike rentals to be dependent on current weather conditions. If that is the case, the extent of that relationship would be important information for the bikesharing companies. Potentially, the information could be a factor in variety if business decisions, including level of pricing or supply for bikes in different seasons.   
 
-Import the required dependencies.
+---
+
+Considering these possible applications, this report will attempt to answer: **To what extent can weather data predict the number of bike rentals in different parts of the day?** Weather data will includes temperature, wind speed, occurrence of weather phenomena (including storms, snow and rain), 
+
+Operationalization of the RQ:  
+
+* Control variables – possibly a table with all of the variables.  
+
+* Drawing of the path model.  
+
+* Methodology.  
+
+* Data description.  
+
+To describe our data, we retrieved the hourly count of bike rentals between the years 2022 and 2012 from the machine learning repository UC Irvine. The metadata of this dataset belongs to Capital Bikeshare in Washington DC, United States. Thus, focusing on an American population with the corresponding weather and seasonal information.  
+
+
+# References
+
+<div id="refs"></div>
+
+# Load data
+
+Data set is acquired from a [machine-learning repository](https://archive.ics.uci.edu/dataset/275/bike+sharing+dataset), which provided us with three files, namely:  
+
+* `hour.csv`, hourly data of bike rentals.
+* `day.csv`, daily data of bike rentals.
+* `README.txt`, providing additional metadata about the file and their data.
+
+We first specify our dependencies and read the data from `hour.csv`. We also load `day.csv`, solely for comparison purposes in our [EDA](#eda) phase.  
 
 ```{r import, message = FALSE}
 library(tidyverse)
@@ -17,18 +56,46 @@ library(fastDummies)
 library(kableExtra)
 library(gridExtra, exclude="combine")
 library(lubridate)
+library(equatiomatic)
 ```
 
-Read the data.
-
 ```{r read bike}
+# Source hourly data for model
 source_data <- read.csv("../data/hour.csv", header = TRUE, sep = ",") %>%
   as_tibble()
 
+# Extra daily data for EDA
+day_df <- read.csv("../data/hour.csv", header = TRUE, sep = ",") %>%
+  as_tibble()
+
+# Clone source
 data <- source_data
+
+head(data)
 ```
 
-Expand date data with `# day` and date numeric conversion.
+We then create a sub-selection of variables that are of interest for our model; these are the control, predictor and outcome variables.
+
+```{r select}
+data <- select(data,
+               dteday,
+               hr, 
+               weathersit, 
+               temp, 
+               atemp, 
+               hum, 
+               windspeed, 
+               cnt)
+```
+
+# Preprocessing & EDA {#eda}
+
+## Data Cleaning
+
+### Expand `dteday` data
+
+Expand `dteday` data by adding `day` and `dt_num`.
+
 ```{r expand date}
 # Converts datetime string to numeric with origin offset.
 date_to_num <- function(date, offset) {
@@ -42,7 +109,6 @@ dt_offset <- source_data$dteday[1] %>%
 
 data <- data %>%
   mutate(
-    day = day(dteday),
     dt_num = date_to_num(dteday, dt_offset)
   )
 
@@ -50,22 +116,51 @@ data <- data %>%
 n_days <- n_distinct(data$dteday)
 ```
 
-Sub-select variables.
+### Binning of `hr` categories
 
-```{r select}
-data <- select(data, 
-               dt_num,
-               yr,
-               day,
-               mnth,
-               hr, 
-               weathersit, 
-               temp, 
-               atemp, 
-               hum, 
-               windspeed, 
-               cnt)
+Create segments for `hr`. 24 categories is too much.
+
+```{r hour cut}
+# Shift the `hr` data and increment the hour 23 for easier binning via the cut function.
+data <- data %>%
+  mutate(hr_idx = hr + 2)
+
+data$hr_idx[data$hr == 23] <- 1
+
+# Cut the 24 hour entries in 3 categories.
+data <- data %>%
+  mutate(hr_seg = cut(
+    hr_idx,
+    breaks = c(0, 8, 16, 24),
+    labels = c("night", "morning-noon", "eve")
+  ))
+
+# Check output for single day.
+data %>%
+  filter(dteday == "2011-01-01") %>%
+  arrange(hr_idx) %>%
+  select(hr, hr_seg) %>%
+  head(24)
 ```
+
+Segments were chosen based on `hr~cnt` data. Segments needed to be of equal size.
+
+```{r determine segment}
+# Create a `mode` function for aggregation.
+mode <- function(x) {
+    which.max(table(x))
+}
+
+data %>%
+  group_by(hr, hr_seg) %>%
+  summarise(
+    cnt = sum(cnt)
+  ) %>%
+  ggplot(aes(hr, cnt, fill = hr_seg)) +
+    geom_bar(stat = "identity")
+```
+
+## The rest
 
 Summary of our data.
 
@@ -73,21 +168,15 @@ Summary of our data.
 summary(data)
 head(data)
 ```
-Data contains ``r n_days`` unique days, meaning that the entirety of 2011 (365 days) and 2012 (366 days) was recorded.
 
-## Preprocessing & EDA
+Data contains `r n_days` unique days, meaning that the entirety of 2011 (365 days) and 2012 (366 days) was recorded.
 
-### Missing data
+## Distributions
 
-Check standard NA values. There are none.
+Distributions of variables. Notice the following:
 
-```{r missing standard}
-anyNA(data)
-```
-
-### Distributions
-
-Distributions of variables.
+-   Missing records in some `hr` categories.
+-   Occurrence gap in `windspeed` distribution.
 
 ```{r distributions, message = FALSE, echo = FALSE}
 grid.arrange(
@@ -101,9 +190,17 @@ grid.arrange(
 )
 ```
 
-#### Missing records for hour
+## Missing data {.tabset}
 
-Some `hr` values seem to have a lower amount of occurrences than others. 
+Check standard NA values. There are none.
+
+```{r missing standard}
+anyNA(data)
+```
+
+### Missing records for hour
+
+Some `hr` values seem to have a lower amount of occurrences than others.
 
 ```{r hr missing}
 hr_df <- data %>%
@@ -112,20 +209,70 @@ hr_df <- data %>%
     n = n(),
     n_missing_days = n_days - n)
 
-hr_df
+ggplot(hr_df, aes(hr, n_missing_days)) +
+  geom_bar(stat = "identity")
 ```
 
-Determine where missing records are located.
+Determine where missing records are located. Seems that a system outtage (or the like) was present on `2012-10-29` and `2012-10-30`, with a combined total of `35` missing records.
 
-```{r missing location}
+```{r missing location, message = FALSE}
 missing_df <- data %>%
-  group_by(dt_num) %>%
+  group_by(dteday, dt_num) %>%
   summarise(
     n_records = n(),
     n_missing_records = 24 - n_records
   ) %>%
-  filter(n_missing_records > 0) +
-  arrange(desc(n_missing_records))
+  filter(n_missing_records > 0) %>%
+  arrange(desc(n_missing_records)) %>%
+  select(dteday, n_missing_records)
 
-missing_df
+head(missing_df, 10)
+```
+
+### Gap in windspeed distribution
+
+Might have to do with minimal threshold of the sensor to measure windspeed.
+
+## Data Aggregation
+After having created `hr_seq`, we aggregate the data based on both the date (`dteday`) and the hour segments (`hr_seg`. In case of dichotomous variables, we take the `mode` of the variable.
+```{r aggregate hour}
+# Aggregate over `hr_bin` factor.
+data <- data %>%
+    group_by(dteday, hr_seg) %>%
+    summarize(
+        temp = mean(temp),
+        atemp = mean(atemp),
+        hum = mean(hum),
+        windspeed = mean(atemp),
+        weathersit = mode(weathersit),
+        cnt = sum(cnt)
+    )
+```
+Categorical variables (i.e. `hr_bin`) are not directly suited for regression analysis, unlike dichotomous or continous
+variables. Instead, they need to be recoded into a series of variables which can then be entered into the regression
+model [[UCLA](https://stats.oarc.ucla.edu/spss/faq/coding-systems-for-categorical-variables-in-regression-analysis-2/#)].
+The chosen method is creating **dummy variables** for the categorical data, provided by the `dummy_cols` function.
+By removing the first dummy variable we multi-collinearity issues in the model [[fastDummies documentation](https://cran.r-project.org/web/packages/fastDummies/fastDummies.pdf)].
+
+(Further research: *generalised linear model*, using *poisson distribution.)
+
+```{r dummy}
+data <- dummy_cols(data, select_columns = c("hr_seg", "weathersit"), remove_first_dummy = TRUE)
+```
+
+Which finally gives us the following aggregated data by `dteday` and `hr_seg`:
+```{r final agg, echo = FALSE}
+head(data)
+```
+
+# Linear model
+
+```{r model}
+fit <- lm(cnt ~ temp + hum, data)
+
+# show the theoretical model
+equatiomatic::extract_eq(fit)
+
+# display the actual coefficients
+equatiomatic::extract_eq(fit, use_coefs = TRUE)
 ```
