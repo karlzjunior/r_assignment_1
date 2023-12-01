@@ -1,0 +1,131 @@
+---
+title: "Bike Sharing"
+author: "Aga, Karla, Nisse, Ole"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+## Load data
+
+Data set is acquired from [machine-learning repo](https://archive.ics.uci.edu/dataset/275/bike+sharing+dataset).
+
+Import the required dependencies.
+
+```{r import, message = FALSE}
+library(tidyverse)
+library(fastDummies)
+library(kableExtra)
+library(gridExtra, exclude="combine")
+library(lubridate)
+```
+
+Read the data.
+
+```{r read bike}
+source_data <- read.csv("../data/hour.csv", header = TRUE, sep = ",") %>%
+  as_tibble()
+
+data <- source_data
+```
+
+Expand date data with `# day` and date numeric conversion.
+```{r expand date}
+# Converts datetime string to numeric with origin offset.
+date_to_num <- function(date, offset) {
+   as.integer(as.Date(date, "%Y-%m-%d")) - offset
+}
+
+# Fetch origin.
+dt_offset <- source_data$dteday[1] %>%
+  date_to_num(0) - 1
+
+
+data <- data %>%
+  mutate(
+    day = day(dteday),
+    dt_num = date_to_num(dteday, dt_offset)
+  )
+
+# Global variable for amount of unique days.
+n_days <- n_distinct(data$dteday)
+```
+
+Sub-select variables.
+
+```{r select}
+data <- select(data, 
+               dt_num,
+               yr,
+               day,
+               mnth,
+               hr, 
+               weathersit, 
+               temp, 
+               atemp, 
+               hum, 
+               windspeed, 
+               cnt)
+```
+
+Summary of our data.
+
+```{r summary}
+summary(data)
+head(data)
+```
+Data contains ``r n_days`` unique days, meaning that the entirety of 2011 (365 days) and 2012 (366 days) was recorded.
+
+## Preprocessing & EDA
+
+### Missing data
+
+Check standard NA values. There are none.
+
+```{r missing standard}
+anyNA(data)
+```
+
+### Distributions
+
+Distributions of variables.
+
+```{r distributions, message = FALSE, echo = FALSE}
+grid.arrange(
+    ggplot(data, aes(hr)) + geom_histogram(binwidth = 1),
+    ggplot(data, aes(weathersit)) + geom_histogram(binwidth = 1),
+    ggplot(data, aes(temp)) + geom_histogram(),
+    ggplot(data, aes(atemp)) + geom_histogram(),
+    ggplot(data, aes(hum)) + geom_histogram(),
+    ggplot(data, aes(windspeed)) + geom_histogram(),
+    ggplot(data, aes(cnt)) + geom_histogram()
+)
+```
+
+#### Missing records for hour
+
+Some `hr` values seem to have a lower amount of occurrences than others. 
+
+```{r hr missing}
+hr_df <- data %>%
+  group_by(hr) %>%
+  summarise(
+    n = n(),
+    n_missing_days = n_days - n)
+
+hr_df
+```
+
+Determine where missing records are located.
+
+```{r missing location}
+missing_df <- data %>%
+  group_by(dt_num) %>%
+  summarise(
+    n_records = n(),
+    n_missing_records = 24 - n_records
+  ) %>%
+  filter(n_missing_records > 0) +
+  arrange(desc(n_missing_records))
+
+missing_df
+```

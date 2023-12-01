@@ -14,15 +14,16 @@ Import the required dependencies.
 library(tidyverse)
 library(fastDummies)
 library(kableExtra)
+library(gridExtra, exclude="combine")
 ```
-Proceed to read the data.
+Read the data.
 ```{r read bike}
-source_data <- read.csv("../data/hour.csv", header = TRUE, sep = ",") %>%
+source_data <- read.csv("./data/hour.csv", header = TRUE, sep = ",") %>%
     as_tibble()
 ```
-Sub-select variables for linear model:
+Sub-select variables for linear model.
 ```{r select}
-data <- select(source_data, dteday, hr, holiday, weathersit, temp, atemp, hum, windspeed, cnt)
+data <- select(source_data, dteday, hr, weathersit, temp, atemp, hum, windspeed, cnt)
 ```
 
 ## Preprocessing
@@ -38,30 +39,16 @@ That said, missing values can still be represented as numeric values (e.g.
 looking at the distributions of the predictor values.  
 One thing worth noting, the `windspeed` distribution seems to have no lower values except for `0`. This raises
 the question whether `0` is truly a value, or perhaps is a substitute for missing data.
-```{r missing non-standard, message = FALSE}
-# hr
-ggplot(data, aes(x = hr)) + 
-    geom_histogram(binwidth = 1)
-
-# temp
-ggplot(data, aes(x = temp)) + 
-    geom_histogram()
-
-# atemp
-ggplot(data, aes(x = atemp)) + 
-    geom_histogram()
-
-# windspeed
-ggplot(data, aes(x = windspeed)) + 
-    geom_histogram()
-
-# hum
-ggplot(data, aes(x = hum)) + 
-    geom_histogram()
-
-# cnt
-ggplot(data, aes(x = cnt)) + 
-    geom_histogram()
+```{r distributions, message = FALSE}
+grid.arrange(
+    ggplot(data, aes(hr)) + geom_histogram(binwidth = 1),
+    ggplot(data, aes(weathersit)) + geom_histogram(binwidth = 1),
+    ggplot(data, aes(temp)) + geom_histogram(),
+    ggplot(data, aes(atemp)) + geom_histogram(),
+    ggplot(data, aes(hum)) + geom_histogram(),
+    ggplot(data, aes(windspeed)) + geom_histogram(),
+    ggplot(data, aes(cnt)) + geom_histogram()
+)
 ```
 
 ### Factorise hour data
@@ -115,7 +102,6 @@ data <- data %>%
     select(-hr) %>%
     group_by(dteday, hr_bin) %>%
     summarize(
-        holiday = mode(holiday),
         temp = mean(temp),
         atemp = mean(atemp),
         windspeed = mean(atemp),
