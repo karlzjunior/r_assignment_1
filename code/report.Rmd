@@ -56,7 +56,6 @@ library(fastDummies)
 library(kableExtra)
 library(gridExtra, exclude="combine")
 library(lubridate)
-library(equatiomatic)
 ```
 
 ```{r read bike}
@@ -74,7 +73,7 @@ data <- source_data
 head(data)
 ```
 
-We then create a sub-selection of variables that are of interest for our model; these are the control, predictor and outcome variables.
+We then create a sub-selection of variables that are of interest for our model; these are the control, predictor and outcome variables + variables necessary for EDA and preprocessing.
 
 ```{r select}
 data <- select(data,
@@ -88,13 +87,15 @@ data <- select(data,
                cnt)
 ```
 
+TODO: perhaps describe columns, # of rows or the like. summarising dataframe?
+
 # Preprocessing & EDA {#eda}
 
-## Data Cleaning
+## Data Cleaning {.tabset}
 
 ### Expand `dteday` data
 
-Expand `dteday` data by adding `day` and `dt_num`.
+Expand `dteday` data by adding `dt_num` (numeric version of day, day_id so to speak).
 
 ```{r expand date}
 # Converts datetime string to numeric with origin offset.
@@ -116,12 +117,11 @@ data <- data %>%
 n_days <- n_distinct(data$dteday)
 ```
 
-### Binning of `hr` categories
+### Clustering of `hr` categories
 
-Create segments for `hr`. 24 categories is too much.
-
+Create clusters for `hr`. 24 dummy codes it too much.
 ```{r hour cut}
-# Shift the `hr` data and increment the hour 23 for easier binning via the cut function.
+# Shift the `hr` data by 2 and increment the hour 23 for easier binning via the cut function.
 data <- data %>%
   mutate(hr_idx = hr + 2)
 
@@ -134,23 +134,28 @@ data <- data %>%
     breaks = c(0, 8, 16, 24),
     labels = c("night", "morning-noon", "eve")
   ))
+```
 
+Check whether segmenting of `hr` is applied correctly by looking at single day data.
+
+```{r bin check}
 # Check output for single day.
 data %>%
   filter(dteday == "2011-01-01") %>%
-  arrange(hr_idx) %>%
+  arrange(hr) %>%
   select(hr, hr_seg) %>%
   head(24)
 ```
 
 Segments were chosen based on `hr~cnt` data. Segments needed to be of equal size.
 
-```{r determine segment}
+```{r determine segment, message=FALSE}
 # Create a `mode` function for aggregation.
 mode <- function(x) {
     which.max(table(x))
 }
 
+# Plot hr~cnt with current segmentation indicator.
 data %>%
   group_by(hr, hr_seg) %>%
   summarise(
@@ -166,17 +171,13 @@ Summary of our data.
 
 ```{r summary}
 summary(data)
-head(data)
 ```
 
 Data contains `r n_days` unique days, meaning that the entirety of 2011 (365 days) and 2012 (366 days) was recorded.
 
 ## Distributions
 
-Distributions of variables. Notice the following:
-
--   Missing records in some `hr` categories.
--   Occurrence gap in `windspeed` distribution.
+Distributions of variables.
 
 ```{r distributions, message = FALSE, echo = FALSE}
 grid.arrange(
@@ -188,6 +189,36 @@ grid.arrange(
     ggplot(data, aes(windspeed)) + geom_histogram(),
     ggplot(data, aes(cnt)) + geom_histogram()
 )
+```
+Notice the following:
+
+-   Missing records in some `hr` categories.
+-   Occurrence gap in `windspeed` distribution.
+-   Category 4 of `weathersit` is barely present.
+
+## Outliers
+
+Outlier detection using quantiles.  
+```{r outliers}
+grid.arrange(
+    ggplot(data, aes(temp)) + geom_boxplot(),
+    ggplot(data, aes(atemp)) + geom_boxplot(),
+    ggplot(data, aes(hum)) + geom_boxplot(),
+    ggplot(data, aes(windspeed)) + geom_boxplot(),
+    ggplot(data, aes(cnt)) + geom_boxplot()
+)
+```
+
+Notice the following:
+
+-   Large amount of outliers in `cnt` (outcome variables).
+-   Some outliers in `windspeed`.
+-   3x `0.00` values of `hum`.
+
+Large amount of `cnt` outliers is due to low rental count during the night, which shifts the median to a lower value. `hr_seg` acts as moderator, so better to check data displays *per* `hr_seg` cluster:
+
+```{r outliers per hr seg}
+ggplot(data, aes(cnt, colour = hr_seg)) + geom_boxplot()
 ```
 
 ## Missing data {.tabset}
@@ -248,31 +279,9 @@ data <- data %>%
         cnt = sum(cnt)
     )
 ```
-Categorical variables (i.e. `hr_bin`) are not directly suited for regression analysis, unlike dichotomous or continous
-variables. Instead, they need to be recoded into a series of variables which can then be entered into the regression
-model [[UCLA](https://stats.oarc.ucla.edu/spss/faq/coding-systems-for-categorical-variables-in-regression-analysis-2/#)].
-The chosen method is creating **dummy variables** for the categorical data, provided by the `dummy_cols` function.
-By removing the first dummy variable we multi-collinearity issues in the model [[fastDummies documentation](https://cran.r-project.org/web/packages/fastDummies/fastDummies.pdf)].
-
-(Further research: *generalised linear model*, using *poisson distribution.)
-
-```{r dummy}
-data <- dummy_cols(data, select_columns = c("hr_seg", "weathersit"), remove_first_dummy = TRUE)
-```
-
-Which finally gives us the following aggregated data by `dteday` and `hr_seg`:
-```{r final agg, echo = FALSE}
-head(data)
-```
 
 # Linear model
 
 ```{r model}
 fit <- lm(cnt ~ temp + hum, data)
-
-# show the theoretical model
-equatiomatic::extract_eq(fit)
-
-# display the actual coefficients
-equatiomatic::extract_eq(fit, use_coefs = TRUE)
 ```
