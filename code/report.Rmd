@@ -119,7 +119,7 @@ n_days <- n_distinct(data$dteday)
 
 ### Clustering of `hr` categories
 
-Create clusters for `hr`. 24 dummy codes it too much.
+Create clusters for `hr`  called `hr_seg`. 24 dummy codes it too much.
 ```{r hour cut}
 # Shift the `hr` data by 2 and increment the hour 23 for easier binning via the cut function.
 data <- data %>%
@@ -165,7 +165,7 @@ data %>%
     geom_bar(stat = "identity")
 ```
 
-## The rest
+## Summary/stats?
 
 Summary of our data.
 
@@ -175,11 +175,11 @@ summary(data)
 
 Data contains `r n_days` unique days, meaning that the entirety of 2011 (365 days) and 2012 (366 days) was recorded.
 
-## Distributions
+## Distributions {#dists}
 
 Distributions of variables.
 
-```{r distributions, message = FALSE, echo = FALSE}
+```{r distributions, echo=FALSE, message=FALSE}
 grid.arrange(
     ggplot(data, aes(hr)) + geom_histogram(binwidth = 1),
     ggplot(data, aes(weathersit)) + geom_histogram(binwidth = 1),
@@ -190,16 +190,17 @@ grid.arrange(
     ggplot(data, aes(cnt)) + geom_histogram()
 )
 ```
+
 Notice the following:
 
 -   Missing records in some `hr` categories.
 -   Occurrence gap in `windspeed` distribution.
--   Category 4 of `weathersit` is barely present.
+-   Category 4 of `weathersit` is barely present. (categorical outlier)
 
-## Outliers
+## Outliers {.tabset}
 
 Outlier detection using quantiles.  
-```{r outliers}
+```{r outliers, echo=FALSE, message=FALSE}
 grid.arrange(
     ggplot(data, aes(temp)) + geom_boxplot(),
     ggplot(data, aes(atemp)) + geom_boxplot(),
@@ -211,17 +212,49 @@ grid.arrange(
 
 Notice the following:
 
--   Large amount of outliers in `cnt` (outcome variables).
+-   Large amount of outliers in `cnt` (outcome variables (due to right-skewed distr).
 -   Some outliers in `windspeed`.
 -   3x `0.00` values of `hum`.
 
-Large amount of `cnt` outliers is due to low rental count during the night, which shifts the median to a lower value. `hr_seg` acts as moderator, so better to check data displays *per* `hr_seg` cluster:
+### Rental count outliers
+Large amount of `cnt` outliers is due to low rental count during the night, which shifts the median to a lower value. `hr_seg` acts as moderator, so better to check data displays *per* `hr_seg` cluster.  
 
-```{r outliers per hr seg}
+```{r cnt outliers, echo=FALSE, message=FALSE}
 ggplot(data, aes(cnt, colour = hr_seg)) + geom_boxplot()
+
+ggplot(data, aes(cnt)) + geom_histogram() + facet_wrap(vars(hr_seg))
 ```
 
-## Missing data {.tabset}
+Even then we see that distributions per `hr_seq` are heavily right-skewed, explaining the multitude of outliers.  
+Looking at the tail-end of the `cnt` values, these seem to be non-error outliers. Furthermore they seem to be reasonable values due to right-skewness, hence we don't remove them.
+
+### Windspeed outliers
+
+Again right-skewed, hence large values are seen as outliers. Do notice how there's gap between 0 values and the first non-zero values, specifically:  
+```{r windspeed outliers}
+data %>%
+  group_by(windspeed) %>%
+  summarise(n = n()) %>%
+  arrange(windspeed) %>%
+  head()
+```
+
+Might be due to sensor threshold for measuring windspeed. In any case, these values fall within the distribution, it is only odd that there's a small increment between the `0.00` occurences and the values thereafter (e.g. `0.0869`).
+These might also be possible missing values which are replaced with `0.00`.  
+In any case, we cannot know for certain. Since the number of occurrences for `0.00` is in line with neigbouring values, we choose to keep them.
+
+### Humidity outliers
+
+`hum` is left-skewed.
+```{r hum outliers}
+data %>%
+  group_by(hum) %>%
+  summarise(n = n()) %>%
+  arrange(hum) %>%
+  head()
+```
+
+## Missing data
 
 Check standard NA values. There are none.
 
@@ -231,22 +264,24 @@ anyNA(data)
 
 ### Missing records for hour
 
-Some `hr` values seem to have a lower amount of occurrences than others.
+Some `hr` values seem to have a lower amount of occurrences than others, as can be seen in distribution plot of [Distributions](#dists)
 
 ```{r hr missing}
+# Count the amount of records per hour.
+# Also add a column for amount of *missing* records.
 hr_df <- data %>%
   group_by(hr) %>%
   summarise(
     n = n(),
-    n_missing_days = n_days - n)
+    n_missing_days = n_days - n) # using global variable `n_days`.
 
 ggplot(hr_df, aes(hr, n_missing_days)) +
   geom_bar(stat = "identity")
 ```
 
 Determine where missing records are located. Seems that a system outtage (or the like) was present on `2012-10-29` and `2012-10-30`, with a combined total of `35` missing records.
-
 ```{r missing location, message = FALSE}
+# Create dataframe with amount of missing records per day.
 missing_df <- data %>%
   group_by(dteday, dt_num) %>%
   summarise(
@@ -260,13 +295,50 @@ missing_df <- data %>%
 head(missing_df, 10)
 ```
 
-### Gap in windspeed distribution
+`n_missing_records` is the amount of missing entries on that particalur day.
 
-Might have to do with minimal threshold of the sensor to measure windspeed.
+## Covariance {.tabset}
+
+### Covariance with predictor `atemp`
+
+Have suspicion that `atemp` might be correlated with `temp`, `windspeed` and `hum`, since it is a combined variable of the three (mayhaps). Justify this:
+
+```{r atemp covar, echo=FALSE}
+grid.arrange(
+  ggplot(data, aes(temp, atemp)) + geom_point(),
+  ggplot(data, aes(windspeed, atemp)) + geom_point(),
+  ggplot(data, aes(hum, atemp)) + geom_point(),
+  nrow = 1
+)
+```
+
+Can conclude that predictor variables `atemp` and `temp` are heavily correlated, whilst `hum` and `windspeed` have a weaker relation with `atemp`.
+
+### Covariance with outcome variable `cnt`
+
+Remark:  
+
+- Non-linear relation between `hum` and `cnt`
+- Negative relation between `windspeed` and `cnt`
+- Positive relation between `temp` and `cnt`, up until high temperatures are reached (ppl dont like biking in hot water, don't blame them).
+
+```{r cnt covar, echo=FALSE}
+plot_cnt_covar <- function(plot) (
+  plot
+    + geom_point() 
+    + geom_smooth(method = 'loess') 
+    + facet_wrap(vars(hr_seg))
+)
+
+ggplot(data, aes(temp, cnt)) %>% plot_cnt_covar()
+ggplot(data, aes(windspeed, cnt)) %>% plot_cnt_covar()
+ggplot(data, aes(hum, cnt)) %>% plot_cnt_covar()
+
+```
 
 ## Data Aggregation
-After having created `hr_seq`, we aggregate the data based on both the date (`dteday`) and the hour segments (`hr_seg`. In case of dichotomous variables, we take the `mode` of the variable.
-```{r aggregate hour}
+After having created `hr_seq`, we aggregate the data based on both the date (`dteday`) and the hour segments (`hr_seg`. In case of dichotomous variables, we take the `mode` of the variable, with earlier defined function.
+```{r aggregate hour, message=FALSE}
 # Aggregate over `hr_bin` factor.
 data <- data %>%
     group_by(dteday, hr_seg) %>%
@@ -279,6 +351,8 @@ data <- data %>%
         cnt = sum(cnt)
     )
 ```
+
+
 
 # Linear model
 
