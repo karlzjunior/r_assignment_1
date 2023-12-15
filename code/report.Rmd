@@ -312,9 +312,23 @@ grid.arrange(
 )
 ```
 
-Can conclude that predictor variables `atemp` and `temp` are heavily correlated, whilst `hum` and `windspeed` have a weaker relation with `atemp`.
+Can conclude that predictor variables `atemp` and `temp` are highly correlated, whilst `hum` and `windspeed` have a weaker relation with `atemp`.
+
+TODO reason why not to include `atemp` in model comparison.
 
 ### Covariance with outcome variable `cnt`
+
+Create covariance table of predictor vs outcome variables.
+```{r cnt covar table}
+covar_df <- data.frame(
+  temp = cor(data$cnt, data$temp),
+  hum = cor(data$cnt, data$hum),
+  windspeed = cor(data$cnt, data$windspeed),
+  weathersit = cor(data$cnt, data$weathersit)
+)
+
+covar_df
+```
 
 Remark:  
 
@@ -322,18 +336,17 @@ Remark:
 - Negative relation between `windspeed` and `cnt`
 - Positive relation between `temp` and `cnt`, up until high temperatures are reached (ppl dont like biking in hot water, don't blame them).
 
-```{r cnt covar, echo=FALSE}
-plot_cnt_covar <- function(plot) (
-  plot
-    + geom_point() 
-    + geom_smooth(method = 'loess') 
-    + facet_wrap(vars(hr_seg))
-)
+```{r cnt covar scatter, echo=FALSE, message=FALSE}
+plot_cnt_covar <- function(plot) {
+  plot + 
+    geom_point() +
+    geom_smooth(method = 'loess') +
+    facet_wrap(vars(hr_seg))
+}
 
 ggplot(data, aes(temp, cnt)) %>% plot_cnt_covar()
 ggplot(data, aes(windspeed, cnt)) %>% plot_cnt_covar()
 ggplot(data, aes(hum, cnt)) %>% plot_cnt_covar()
-
 ```
 
 ## Data Aggregation
@@ -354,8 +367,41 @@ data <- data %>%
 
 
 
-# Linear model
+# Model estimation
 
-```{r model}
-fit <- lm(cnt ~ temp + hum, data)
+Create simple and complex models. Order is based on covariance table (high to low).
+```{r model creation}
+# Create models.
+model1        <- lm(cnt ~ temp, data)
+model2        <- lm(cnt ~ temp + hum, data)
+model3        <- lm(cnt ~ temp + hum + weathersit, data)
+model4        <- lm(cnt ~ temp + hum + weathersit + windspeed, data)
+
+# Include moderator for model of choice (#2), for comparison analysis.
+model2_mod    <- lm(cnt ~ (temp + hum)* hr_seg, data)
+```
+
+Comparison results table.
+```{r comparison}
+
+RMSE <- function(model) {
+  model$residuals^2 %>% mean()
+}
+
+comp_df <- data.frame(
+  model = c('model1', 'model2', 'model3', 'model4', 'model2_mod'),
+  predictors = c('temp', 'temp + hum', 'temp + hum + weathersit', 'temp + hum + weathersit + windspeed', 'temp + hum'),
+  moderator = c('', '', '', '', 'hr_seg'),
+  AIC = c(AIC(model1), AIC(model2), AIC(model3), AIC(model4), AIC(model2_mod)),
+  BIC = c(BIC(model1), BIC(model2), BIC(model3), BIC(model4), BIC(model2_mod)),
+  RMSE = c(RMSE(model1), RMSE(model2), RMSE(model3), RMSE(model4), RMSE(model2_mod))
+)
+
+
+comp_df
+```
+
+Anova tests.
+```{r anovas}
+anova(model1, model2)
 ```
