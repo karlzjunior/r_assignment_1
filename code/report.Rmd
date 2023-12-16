@@ -57,6 +57,7 @@ library(kableExtra)
 library(gridExtra, exclude="combine")
 library(lubridate)
 library(car)
+library(ICC)
 ```
 
 ```{r read bike}
@@ -434,6 +435,8 @@ ggplot(data, aes(temp, cnt, colour = hr_seg)) +
   geom_smooth()
 ```
 
+The relationship is not quite linear. It seems that, when the temperature gets too high, people stop renting bikes. The higher temperatures which stop people from renting bikes, do not seem to occur in the night. Therefore, the relationship between temperature and rent count seems linear in the night.
+
 ### `hum`
 
 ```{r lin hum, message=FALSE, echo=FALSE}
@@ -450,16 +453,14 @@ ggplot(data, aes(hum3, cnt, colour = hr_seg)) +
   geom_smooth()
 ```
 
+This is the best transformation we could come up with. It's not perfect, but we're accepting this as sufficiently linear.
+
 ## Full rank predictor matrix
 
-Check:
 
-- $N > P$, where $N$ is the number of rows and $P$ are the amount of predictors within the model.
-- Predictors may not show linear relation with one another.
+The dataset contains 2190 observations (that is, the dataset after aggregating the data). It only contains 9 variables, including the transformed humidity variable. There are definitely more observations than there are variables.
 
-Data has `n = `r nrow(data)`` rows, which is greater than the number of predictors `P = 2`.  
-
-Check absence of multicollinearity:
+Next, we need to know whether there is a relationship between the two predictors we are using, temperature and humidity.
 
 ```{r multicol, message=FALSE, echo=FALSE}
 ggplot(data, aes(temp, hum3)) +
@@ -467,30 +468,37 @@ ggplot(data, aes(temp, hum3)) +
   geom_smooth()
 ```
 
-Can indeed conclude there is no linear combination between `hum3` and `temp`, our predictors.
+This graph shows there is no relationship between temperature and humidity, so we can conclude there is no issue of multicollinearity.
 
 ## Exogenous predictors
 
-Check:  
 
-- $Cov(\hat{Y}, \epsilon) = 0$
-- $E[\epsilon_n] = 0$
-- No relation between predictors and residuals of model.
+We need to check whether there is no relationship between the predictors of the model, and its errors. 
 
 ```{r cov e}
- cov_res <- cov(predict(model2_mod), resid(model2_mod))
+cov_res <- cov(predict(model2_mod), resid(model2_mod))
+cov_res
 ```
 
-Covariance between `predicted` and `residuals` is ``r cov_res``.
+This value is practically equal to zero.
 
-```{r pred res relatoin, message=FALSE, echo=FALSE}
+Next, we need to know whether the mean of the errors of the model are equal to zero.
+
+```{r pred res relation, message=FALSE, echo=FALSE}
 grid.arrange(
   ggplot(data, aes(temp, resid(model2_mod))) +  geom_point() +  geom_smooth(),
   ggplot(data, aes(hum, resid(model2_mod))) +  geom_point() +  geom_smooth()
 )
 ```
 
+The first graph is not quite right, though the line only starts deviating from 0, in the latter part of the graph. There's less data points there as well, so it makes sense. We can make do, though.
+The second graph is completely fine.
+
 ## Constant & finite variance
+
+
+We need to find out whether the variance of the errors is constant over all levels of the predictor (homoscedasticity). That is shown in the first plot below.
+The second plot is similar, but it shows standardized residuals (or, more accurately, their square root).
 
 ```{r homosced}
 # Residual plot.
@@ -498,23 +506,49 @@ model2_mod %>% plot(1)
 model2_mod %>% plot(3)
 ```
 
+The first plot is fine: the red line should be y = 0. That seems to be fine.
+The second plot also seems to be roughly fine. There is a weird cluster of errors in the first part of both graphs; those are responsible for the "night" rentals.
+
 ## Independent errors
 
-```{r indep res}
-plot(rstudent(model2_mod)) 
+
+The errors should be independent. Now, we can check for clustering, though we have already manually clustered the data. We can check if that clustering was sufficient.
+
+```{r}
+ICCbare(data$temp, resid(model2_mod))
+ICCbare(data$hum, resid(model2_mod))
+ICCbare(data$hr_seg, resid(model2_mod))
 ```
 
+All ICC are close enough to 0 to conclude that there is no issue of dependence of errors.
 
 ## Normally distributed errors
+
+
+The errors should be normally distributed. We can make a Q-Q plot to check whether that's true.
 
 ```{r qqplot}
 plot(model2_mod, 2)
 ```
 
+We want the errors to be as close to the dotted line as possible. It's not looking to great, but it's okay enough.
+
 ## Influential data points
+
+
+We need to check whether the model contains any influential data points. That includes outliers and high-leverage observations. We can check the outliers first.
+
+```{r indep res}
+plot(rstudent(model2_mod)) 
+```
+
+Again, the errors should be close to y = 0. And again, it doesn't look to great, but most of the errors seem to be close to y = 0. Interestingly, the earlier outlying values seem to be below 0, while the later values seem to be above 0. It may be possible that the bike renting program started at the first day of this dataset, so it became more popular over time. There is no way to be sure, though.
+
+Next, we need to measure Cook's distance. Outliers are included in this measure as well, but since we checked those already, we really want to know about the high-leverage points.
+
 ```{r outliers post model}
 plot(cooks.distance(model2_mod))            # Seems bad, but look at scale
 plot(dfbetas(model2_mod)[,1])               # Seems good
 ```
 
-
+Nowhere, Cook's distance is high at all. So this assumption seems to be sufficiently met.
