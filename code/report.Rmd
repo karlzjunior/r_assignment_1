@@ -56,6 +56,7 @@ library(fastDummies)
 library(kableExtra)
 library(gridExtra, exclude="combine")
 library(lubridate)
+library(car)
 ```
 
 ```{r read bike}
@@ -119,7 +120,9 @@ n_days <- n_distinct(data$dteday)
 
 ### Clustering of `hr` categories
 
-Create clusters for `hr`  called `hr_seg`. 24 dummy codes it too much.
+Create clusters for `hr`  called `hr_seg`. 24 dummy codes it too much. Can use `ICC`, but requires systematic approach and might result in non-continuous clusters (as in not a single range of hours, e.g. 2, 7, 8).
+
+Instead divide based on relation to outcome variable.
 ```{r hour cut}
 # Shift the `hr` data by 2 and increment the hour 23 for easier binning via the cut function.
 data <- data %>%
@@ -367,30 +370,35 @@ data <- data %>%
 
 
 
-# Model estimation
+# Model creation & comparison
+
+Later on in [Assumptions](#assum) we concluded a non-linear (higher-order) relation between `hum` and `cnt`. To approximate a linear relation, we've transformed the data to `f(x) = x^3`, saved in column `hum3`.  
+
+```{r solve non lin}
+data$hum3 = data$hum^3
+```
 
 Create simple and complex models. Order is based on covariance table (high to low).
 ```{r model creation}
 # Create models.
 model1        <- lm(cnt ~ temp, data)
-model2        <- lm(cnt ~ temp + hum, data)
-model3        <- lm(cnt ~ temp + hum + weathersit, data)
-model4        <- lm(cnt ~ temp + hum + weathersit + windspeed, data)
+model2        <- lm(cnt ~ temp + hum3, data)
+model3        <- lm(cnt ~ temp + hum3 + weathersit, data)
+model4        <- lm(cnt ~ temp + hum3 + weathersit + windspeed, data)
 
 # Include moderator for model of choice (#2), for comparison analysis.
-model2_mod    <- lm(cnt ~ (temp + hum)* hr_seg, data)
+model2_mod    <- lm(cnt ~ (temp + hum3)* hr_seg, data)
 ```
 
 Comparison results table.
 ```{r comparison}
-
 RMSE <- function(model) {
   model$residuals^2 %>% mean()
 }
 
 comp_df <- data.frame(
   model = c('model1', 'model2', 'model3', 'model4', 'model2_mod'),
-  predictors = c('temp', 'temp + hum', 'temp + hum + weathersit', 'temp + hum + weathersit + windspeed', 'temp + hum'),
+  predictors = c('temp', 'temp + hum3', 'temp + hum3 + weathersit', 'temp + hum3 + weathersit + windspeed', 'temp + hum3'),
   moderator = c('', '', '', '', 'hr_seg'),
   AIC = c(AIC(model1), AIC(model2), AIC(model3), AIC(model4), AIC(model2_mod)),
   BIC = c(BIC(model1), BIC(model2), BIC(model3), BIC(model4), BIC(model2_mod)),
@@ -403,5 +411,110 @@ comp_df
 
 Anova tests.
 ```{r anovas}
+# Simple and complex model
 anova(model1, model2)
+anova(model2, model3)
+anova(model3, model4)
+
+# Test addition of moderator
+anova(model2, model2_mod)
 ```
+
+# Assumptions {#assum}
+
+## Linearity {.tabset}
+
+Small remark, the `car` library with `crPlots` function is not applicable on model with interactions, hence we plot per predictor to check relations.
+
+### `temp`
+
+```{r lin temp, message=FALSE, echo=FALSE}
+ggplot(data, aes(temp, cnt, colour = hr_seg)) +
+  geom_point() +
+  geom_smooth()
+```
+
+### `hum`
+
+```{r lin hum, message=FALSE, echo=FALSE}
+ggplot(data, aes(hum, cnt, colour = hr_seg)) +
+  geom_point() +
+  geom_smooth()
+```
+
+To combat this non-linearity issue, we have transformed the predictor variable `hum` (as mentioned earlier). This does make the interpretation of the model less intuitive.
+
+```{r lin hum3, message=FALSE, echo=FALSE}
+ggplot(data, aes(hum3, cnt, colour = hr_seg)) +
+  geom_point() +
+  geom_smooth()
+```
+
+## Full rank predictor matrix
+
+Check:
+
+- $N > P$, where $N$ is the number of rows and $P$ are the amount of predictors within the model.
+- Predictors may not show linear relation with one another.
+
+Data has `n = `r nrow(data)`` rows, which is greater than the number of predictors `P = 2`.  
+
+Check absence of multicollinearity:
+
+```{r multicol, message=FALSE, echo=FALSE}
+ggplot(data, aes(temp, hum3)) +
+  geom_point() +
+  geom_smooth()
+```
+
+Can indeed conclude there is no linear combination between `hum3` and `temp`, our predictors.
+
+## Exogenous predictors
+
+Check:  
+
+- $Cov(\hat{Y}, \epsilon) = 0$
+- $E[\epsilon_n] = 0$
+- No relation between predictors and residuals of model.
+
+```{r cov e}
+ cov_res <- cov(predict(model2_mod), resid(model2_mod))
+```
+
+Covariance between `predicted` and `residuals` is ``r cov_res``.
+
+```{r pred res relatoin, message=FALSE, echo=FALSE}
+grid.arrange(
+  ggplot(data, aes(temp, resid(model2_mod))) +  geom_point() +  geom_smooth(),
+  ggplot(data, aes(hum, resid(model2_mod))) +  geom_point() +  geom_smooth()
+)
+```
+
+## Constant & finite variance
+
+```{r homosced}
+# Residual plot.
+model2_mod %>% plot(1)
+model2_mod %>% plot(3)
+```
+
+## Independent errors
+
+```{r indep res}
+plot(rstudent(model2_mod)) 
+```
+
+
+## Normally distributed errors
+
+```{r qqplot}
+plot(model2_mod, 2)
+```
+
+## Influential data points
+```{r outliers post model}
+plot(cooks.distance(model2_mod))            # Seems bad, but look at scale
+plot(dfbetas(model2_mod)[,1])               # Seems good
+```
+
+
