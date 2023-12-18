@@ -373,7 +373,7 @@ data <- data %>%
 
 # Model creation & comparison
 
-Later on in [Assumptions](#assum) we concluded a non-linear (higher-order) relation between `hum` and `cnt`. To approximate a linear relation, we've transformed the data to `f(x) = x^3`, saved in column `hum3`.  
+Later on in [Assumptions](#assum) we concluded a non-linear (higher-order) relation between `hum` and `cnt`. To approximate a linear relation, we have transformed the data to `f(x) = x^3`, saved in column `hum3`.  
 
 ```{r solve non lin}
 data$hum3 = data$hum^3
@@ -420,6 +420,8 @@ anova(model3, model4)
 # Test addition of moderator
 anova(model2, model2_mod)
 ```
+## Interpration
+
 
 # Assumptions {#assum}
 
@@ -552,3 +554,97 @@ plot(dfbetas(model2_mod)[,1])               # Seems good
 ```
 
 Nowhere, Cook's distance is high at all. So this assumption seems to be sufficiently met.
+
+
+
+# Interpretation of key results
+
+## Model statistics and coefficients
+
+In this section, we will check the quality of our linear model using the R function `summary()` for "model 2" and "model 2 mod" for evaluating the accuracy of our regression model when considering the coefficients and statistics results in R. We will add a new categorical variable named `hr_seg` as a moderator, counting the hours for the `morning-noon` and `eve` (evenning) groups of the day.
+
+```{r}
+# Regression line model: check statistics and coefficients 
+summary(model2)
+```
+
+The summary outputs shows 6 components, including:
+* *Call:* Shows the function call to compute our regression model, which is:
+$$
+lm(formula = cnt ~ (temp + hum3) * hr_seg, data = data)
+$$
+* *Residuals:* A quick view of the distribution of the residuals, which by definition have a mean zero. 
+* *Coefficients:* Shows the regression beta coefficients and their statistical significance. Predictor variables, that are significantly associated with the outcome variable, appear marked by stars.
+* *Residual Standard Error*, *R-squared*, and the *F-statistic* check our model performance.
+
+## Multiple Linear Regression
+
+## Partial effects
+
+This part of the analysis examines the partial effects of the predictors using model 2, since it is crucial to controlling confounds and adequately modeling real-world phenomena.
+
+### Interpretting regression coefficients
+
+### What is the effect of hummidity on the average of total rental bikes, after controlling for temperature?
+First, the intercept tells us the location of the dependent variable when the independent variable equals 0 ($x = 0$). 
+* Using "model 2" as an example, the expected average bike rental when temperature reaches 0°C is 659.44 units.
+
+Second, the regression coefficients for model 2 indicate the amount of change in the predicted variable when the predictor variable is changed with one unit. 
+* For this example, this means that for each Celcius degree increase, average rental bike is expected to increase by 2974.36 units, after controlling for hummidity ("hum3"). 
+* Meanwhile, for each additional point of hummidity, average bike rental is expected to decrease by 2082.68 units, after controlling for temperature.
+
+### Significance testing - P values
+
+Probability values measures the strengthens evidence of the null hypothesis with a fraction or decimal value between 0 and 1. If the result is closer to 0, then the stronger the evidence against the null hypothesis. 
+
+Viewing the `summary` results of "model 2", the predictor variables results obtained that `p < 2.2e-16`. Thus, rejecting the null hypothesis. Our conclusion explains there is a statistical significant or strong relationship between the predictor variables and the response variables due to a smaller p-value. 
+
+
+
+# Moderator variables
+
+## Categorical predictors
+
+```{r}
+# Categorical variables: Check coefficients and statistics results 
+summary(model2_mod)
+```
+
+Reminder: the appearance of the categorical variable `hr_seg` divides the count of hours into the following categories...
+* morning-noon. 
+* eve (standing for evenning time). 
+
+## Interpretting categorical coefficients
+
+In the output, we see that the categorical variable `hr_seg` is added to our multiple linear regression model by testing the relationship between bike rental and temperature to determine its statistical relationship. 
+
+Comparing and contrasting the results between the multiple linear regression model and this categorical predictor, we note the following changes: 
+
+*Temperature and hummidity*
+* In comparison to the multiple linear regression model, temperature remains having an average positive estimation of 587.58 bike rental units while hummidity remains showcasing a decreased average estimation of 94.16 bike rental units.
+
+*Intercept and reference group*
+* `Hr_seg` represents a segment of the day in hours and is categorized as the reference group of this model. 
+* The Intercept represents the average bike rental for a bike rented within a segment of the day (`hr_seg`), assuming all other variables are held constant. 
+
+*Categorical coefficients* 
+* The average estimated value for renting a bike during the morning-noon segment of the day is about 961.65, being higher in comparison to renting a bike in the evenning of the day, which totals to 548.62 units.
+* After controlling temperature, the average estimated bike rental during the morning-noon is about 1627.07, whereas the average estimated bike rental during the evening is 3076.57. Around 1449.5 increased units, meaning that is more fequent on average to rent a bike during the evening, when temperature is controlled. 
+* In comparison to hummidity, both categorical coefficients are decreased, with an average estimated bike rental of -848.74 during the morning-noon, and an average estimated bike rental of -1149.92 during the evenning. 
+
+### Model Fit
+How much variation in bike rental is explained by the two models?
+
+## Comparison of summary statistics and coefficients
+Comparing and contrasting the results in both models (multiple regression line and categorical predictors), temperature and humidity remain having the same relationships for their average estimated values. Temperature is increased, while humidity is decreased. 
+
+For the highest estimated value, the second model indicates an average bike rental during the segment of the evenning with 3076.57 units, after controlling for temperature. Even higher than the values in the multiple linear regression model.
+
+In the second model, hummidity is the only variable which does not necessarily have an statistical relationship with bike rental, showing a p > 0.372. Certainly, way higher than the first model.
+
+## Model accuracy
+
+
+## Cross-validation of results
+
+
